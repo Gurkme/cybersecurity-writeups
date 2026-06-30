@@ -1,4 +1,4 @@
-# Windows Server Brute-Force Detection with Wazuh SIEM
+# Windows Brute-Force Detection Lab with Wazuh SIEM and Custom Correlation Rules
 
 **Author:** Görkem Sezgi Yılmaz  
 **Date:** May 11, 2026  
@@ -19,7 +19,7 @@ The main goal was to understand how endpoint logs can be collected, correlated, 
 flowchart LR
     A[macOS Host<br>Apple M4 / ARM64] --> B[UTM Virtualization<br>Shared NAT Network]
     B --> C[Wazuh Server<br>Ubuntu Server ARM64<br>192.168.64.7]
-    B --> D[Windows Endpoint<br>Windows Server / Windows 11 ARM64<br>192.168.64.10]
+    B --> D[Windows Endpoint<br>Windows Server ARM64<br>192.168.64.10]
     C -->|SMB brute-force simulation| D
     D -->|Windows Event Logs| E[Wazuh Agent]
     E -->|Log forwarding| C
@@ -36,10 +36,10 @@ flowchart LR
 | Network Mode | UTM Shared Network, NAT |
 | Wazuh Server OS | Ubuntu Server 26.04 LTS, aarch64 |
 | Wazuh Version | Wazuh Manager v4.14.5 |
-| Windows Endpoint | Windows Server / Windows 11 ARM64 |
-| Wazuh Server IP | `192.168.64.7` |
-| Windows Endpoint IP | `192.168.64.10` |
-| Attack Simulation Tool | `smbclient` |
+| Windows Endpoint | Windows Server ARM64 |
+| Wazuh Server IP | 192.168.64.7 |
+| Windows Endpoint IP | 192.168.64.10 |
+| Attack Simulation Tool | smbclient |
 | Target Protocol | SMB |
 
 ## Objectives
@@ -77,7 +77,7 @@ The following tasks were completed:
 
 - Added Wazuh repositories manually.
 - Installed the Wazuh Manager package through APT.
-- Verified Wazuh services using `systemctl` and Wazuh control utilities.
+- Verified Wazuh services using **systemctl** and Wazuh control utilities.
 - Checked that the manager was ready to accept agent connections.
 - Resolved disk allocation issues by extending the LVM volume.
 
@@ -102,7 +102,7 @@ A second virtual machine was created for the Windows endpoint. The VM was config
 - **4 CPU cores**
 - **64 GB disk space**
 
-During the installation, the VM initially booted into the UEFI Shell instead of the installer. This was resolved by manually launching the `BOOTAA64.EFI` file.
+During the installation, the VM initially booted into the UEFI Shell instead of the installer. This was resolved by manually launching the **BOOTAA64.EFI** file.
 
 After installation, the endpoint received the following IP address:
 
@@ -119,7 +119,7 @@ To support remote access and attack simulation, the following services and confi
 - RDP service
 - SMB service
 - Firewall permissions for RDP and SMB
-- Windows failed logon auditing through `auditpol`
+- Windows failed logon auditing through auditpol
 
 Failed logon auditing was required so that Windows authentication failures could be captured and forwarded to Wazuh.
 
@@ -133,11 +133,11 @@ During the installation, the Wazuh Manager IP address was configured as:
 192.168.64.7
 ```
 
-The agent registration process was completed with the Wazuh `manage_agents` utility:
+The agent registration process was completed with the Wazuh manage_agents utility:
 
-1. A new agent named `Windows-Server` was created on the Wazuh Manager.
+1. A new agent named **Windows-Server** was created on the Wazuh Manager.
 2. An authentication key was generated for the agent.
-3. The key was imported on the Windows endpoint using `manage_agents.exe`.
+3. The key was imported on the Windows endpoint using **manage_agents.exe**.
 4. The Wazuh Agent service was restarted.
 5. The agent connection was verified from the Wazuh Manager CLI.
 
@@ -146,7 +146,7 @@ The registered agent appeared as:
 ```text
 ID: 001
 Name: Windows-Server
-IP Address: 192.168.64.7
+IP Address: 192.168.64.10
 ```
 
 ![Wazuh agent registration confirmation](assets/13-wazuh-agent-list-confirmation.png)
@@ -163,7 +163,7 @@ A custom Wazuh rule was created in:
 
 The goal of the rule was to detect repeated Windows logon failures within a short time window.
 
-The custom rule was assigned **Rule ID `100001`** and configured to trigger when **five or more failed logon events** were detected within **60 seconds**.
+The custom rule was assigned **Rule ID 100001** and configured to trigger when **five or more failed logon events** were detected within **60 seconds**.
 
 ```xml
 <group name="local,">
@@ -192,9 +192,7 @@ After saving the rule, the Wazuh Manager service was restarted so the new rule c
 
 ## 6. Brute-Force Simulation
 
-The attack scenario was simulated from the Wazuh Server against the Windows endpoint over SMB.
-
-> This test was performed only inside an isolated and authorized lab environment.
+The attack scenario was simulated from the Wazuh Server against the Windows endpoint over SMB. In this compact lab setup, the Wazuh Server was also used as the internal test host to generate SMB authentication attempts. In a larger or production-style lab, this role would normally be separated into a dedicated attacker/test machine.
 
 The following loop was used to generate repeated failed authentication attempts:
 
@@ -278,17 +276,6 @@ The final detection workflow worked as follows:
 5. The custom correlation rule detected repeated failures within the configured time window.
 6. A high-severity brute-force alert was generated.
 
-## Skills Demonstrated
-
-- SIEM deployment and configuration
-- Wazuh Manager setup
-- Wazuh Agent registration
-- Windows Event Log monitoring
-- Authentication failure analysis
-- Custom Wazuh XML rule creation
-- Log correlation and alert validation
-- ARM64 troubleshooting on Apple Silicon
-- Basic attack simulation in an isolated lab
 
 ## Disclaimer
 
